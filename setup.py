@@ -1,56 +1,47 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""The setup script."""
-
 from setuptools import setup, find_packages
-import subprocess 
+import os
 
-with open('README.rst') as readme_file:
+with open('README.md') as readme_file:
     readme = readme_file.read()
 
-with open('HISTORY.rst') as history_file:
-    history = history_file.read()
+requirements = [
+    'pandas>=1.1',]
 
-
-requirements = [ 
-    'scikit-learn>=0.22',
-    'pandas>=0.25', 
-    'holidays'
+test_requirements = [
+    'pytest',
+    'pytest-cov', 
+    'pytest-mock'
 ]
 
-setup_requirements = [ ]
+NAME = 'shark'
 
-test_requirements = [ 
-    'nose', 
-    'coverage'
-]
+# build the version from _version.py
+here = os.path.abspath(os.path.dirname(__file__))
+about = {}
+project_slug = NAME.lower().replace("-", "_").replace(" ", "_")
+with open(os.path.join(here, project_slug, '_version.py')) as f:
+    exec(f.read(), about)
+
 
 setup(
-    author="bpdevadmin",
-    python_requires='>=3.5, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*',
+    name=NAME,
+    description= 'dataframe extension package for cleaning and resampling time series data',
+    version=about['VERSION'],
+    long_description=readme,
+    packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests", "protos", "scripts"]),
+    include_package_data=True,
+    install_requires=requirements,
+    test_suite='pytest',
+    tests_require=test_requirements,
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: Apache Software License',
-        'Natural Language :: English',
+        # Trove classifiers
+        # Full list: https://pypi.python.org/pypi?%3Aaction=list_classifiers
+        'License :: OSI Approved :: MIT License',
+        'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: Implementation :: CPython'
     ],
-    description="Pandas DataFrame Ext for time series related operations",
-    install_requires=requirements,
-    license="Apache Software License 2.0",
-    long_description=readme + '\n\n' + history,
-    include_package_data=True,
-    keywords='shark',
-    name='shark',
-    packages=find_packages(include=['shark', 'shark.*']),
-    setup_requires=setup_requirements,
-    test_suite='tests',
-    tests_require=test_requirements,
-    url='https://github.com/cunybpl/shark',
-    version='v0.1.0',
-    zip_safe=False,
 )

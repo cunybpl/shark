@@ -1,2 +1,0 @@
-class CallableProxyError(Exception):
-    """CallableProxyError"""
