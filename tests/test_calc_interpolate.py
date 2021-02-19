@@ -11,9 +11,9 @@ def test_interpolate(datetime_vec):
     filling = TSFill(time_column='datetime', variable_columns=['a', 'b'])
     df = filling.fill(df, gap_ls)
 
-    interpolation = TSInterpolate(time_column='datetime', a={})
+    interpolation = TSInterpolate(time_column='datetime',  a={})
     df_inter = interpolation.interpolate(df)
-    
+    records = [rec for rec in df_inter.to_dict(orient="records") if rec['datetime'] in gap_ls]
     rec_inter = df_inter.where((pd.notnull(df_inter)), None).to_dict(orient='records')
 
     for i in [10,11,12,13]:

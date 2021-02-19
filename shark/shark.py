@@ -57,7 +57,7 @@ class SharkDataFrame(object):
 
         Args:
             time_column (str): the name of time column
-            add_flag (bool): If set to True, add a flag column that indicates if a point has been interpolated or not.
+            add_flag (bool): Defaults to True. If set to True, add a flag column that indicates if a point has been interpolated or not.
             kwargs: col_to_be_interpolated = dict of kwargs of pd.DataFrame.interpolate
                     example: kwargs = dict(var_x={'limit': 4, method: 'linear'}, var_y = {'limit': 5, method: 'polynomial'})
                     
@@ -67,18 +67,20 @@ class SharkDataFrame(object):
         interpolation = TSInterpolate(time_column, **kwargs)
         return interpolation.interpolate(self._df, add_flag)
 
-    def resample(self, time_column: str, timescale: str, **kwargs) -> pd.DataFrame:
+    def resample(self, time_column: str, timescale: str, metadata_cols: List=[], **kwargs) -> pd.DataFrame:
         """resample time seires to a timescale.
 
         Args:
             time_column (str): name of time column.
             timescale (str): timescale such as hourly, daily, weekly, and monthly.
+            metadata_cols (List): a list of metadata columns that will be included in output. 
             kwargs: col_to_be_resampled=aggregate function. kwargs is kwargs passed to pd.DataFrame.agg
-                    If kwargs is not provided, the function for columns to be resampled will be defaulted to np.mean
+                    Only columns provided in kwargs will be resampled. 
+                    Other columns (excluding metadata columns and datetime cols) will not be in output.
                     example: kwargs = dict(var_x=np.sum, var_y=np.mean)
 
         Returns:
             pd.DataFrame: a resampled dataframe.
         """        
-        resampling = TSResample(time_column, timescale)
+        resampling = TSResample(time_column, timescale, metadata_cols)
         return resampling.resample(self._df, **kwargs)
