@@ -2,20 +2,6 @@
 
 A dataframe extension for cleaning and resampling time series data
 
-Example:
-
-```
-#rtm_df is a dataframe with datetime column named 'datetime'
-#get a list of timeseries index where gaps occured 
-gap_ls = rtm_df.shark.find_gaps(time_column='datetime', freq='15T') 
-#use gap_list to fill missing energy data with nan and other cols with meta data
-df_filled = rtm_df.shark.fill(time_column='datetime', variable_columns=['energy'], gaps_list=gap_ls) 
-#now fill nan energy data with interpolate linear function; see pd.DataFrame.interpolate for args
-interpolate_df = df_filled.shark.interpolate(time_column='datetime', energy={}) #note energy is kwargs here
-#now resample clean dataframe to hourly; note energy is kwargs here
-resample_df = interpolate_df.shark.resample(time_column='datetime', timescale='hourly', energy=np.mean)
-```
-
 #### Usage
 
 ##### Finding gaps in time series
@@ -63,11 +49,11 @@ df_filled = df.shark.fill(time_column='datetime', variable_columns=['energy'], g
 2 NaN NaN  id 2017-09-01 03:00:00
 ```
 
-##### interpolating variable datacolumns with nan values
+##### Interpolating columns with NaN values
 Below, we will interpolate `df_filled` dataframe, which has `a` and `b` as variable columns and `c` as metadata column.
 We wish to interpolate `a` column with linear funciton and `b` column with linear function but only 2 consecutive gaps at a time. 
-Please note that `shark.interpolate` wraps `pandas.DataFrame.interpolate`. Thus, by passing `a={}` as kwargs to `shark.interpolate` will default to default args in `pandas.DataFrame.interpolate` [method](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.interpolate.html), which uses `linear` function as default interpolating method. 
-We can also set `add_flag` to false (defaults to true). This will not add columns that indicate whether a value has been interpolated or not.
+Please note that `shark.interpolate` wraps `pandas.DataFrame.interpolate`. Thus, by passing `a={}` as kwargs, `shark.interpolate` will default to default args in `pandas.DataFrame.interpolate` [method](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.interpolate.html), which uses `linear` function as default interpolating method. 
+We can also set `add_flag` to false (defaults to true); this will not add columns that indicate whether a value has been interpolated or not.
 ```
 interpolate_df = df_filled.shark.interpolate('datetime', add_flag=True, a={}, {'limit': 2}, add)
 
