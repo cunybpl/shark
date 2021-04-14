@@ -1,3 +1,4 @@
-__version__ = '0.1.dev1'
+from ._version import VERSION  
+__version__ = VERSION
 
-import shark.dataframe_ext  # this should load 
+import shark.shark  # this should load 
