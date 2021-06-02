@@ -48,7 +48,7 @@ class TSResample(object):
         df = df.copy()
         
         if irregular:
-            assert num_limit_points, "irregular is set to True. Hence, num_limit_points must be provided."
+            assert num_limit_points > 0, "irregular is set to True. Hence, num_limit_points > 0 must be provided."
 
         timescale_resample, freq_check_val = self._prep_args_timescale(self.timescale)
         freq = abs(int(td_to_minutes(likely_freq_array(df[self.time_column]))))
