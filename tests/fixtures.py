@@ -27,3 +27,22 @@ def rtm_df():
     df = pd.DataFrame(data)
 
     return df
+
+@pytest.fixture
+def irregular_data():
+    datetime_ls = ['2017-09-01 00:00:00',
+                '2017-09-01 00:51:00', 
+                '2017-09-01 01:21:00', 
+                '2017-09-01 01:36:00', 
+                '2017-09-01 01:51:00', 
+                '2017-09-01 02:51:00', 
+                '2017-09-01 03:11:00', 
+                '2017-09-01 03:51:00']
+
+    data = [ {'datetime':i , 'a': 1} for i in datetime_ls]
+    df = pd.DataFrame(data)
+    df['datetime'] = pd.to_datetime(df['datetime'])
+
+    return df
+    
+

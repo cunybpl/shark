@@ -1,7 +1,7 @@
 from shark.shark import SharkDataFrame
 import pandas as pd
 import numpy as np
-from .fixtures import rtm_df
+from .fixtures import rtm_df, irregular_data
 import unittest
 
 tc = unittest.TestCase()
@@ -46,3 +46,19 @@ def test_shark_monthly(rtm_df):
     resample_df = interpolate_df.shark.resample('datetime', 'monthly', energy=np.mean)
 
     assert len(resample_df) == 2
+
+def test_shark_with_irregular_data(irregular_data):
+
+    resample_df = irregular_data.shark.resample('datetime', 'hourly', irregular=True, num_limit_points= 1,
+                                                a=np.sum)
+
+    assert len(resample_df) == 4
+
+    resample_df = irregular_data.shark.resample('datetime', 'hourly', irregular=True, num_limit_points= 2,
+                                                a=np.sum)
+
+    assert len(resample_df) == 3
+
+    with tc.assertRaises(AssertionError):
+        resample_df = irregular_data.shark.resample('datetime', 'hourly', irregular=True,
+                                                a=np.sum)
