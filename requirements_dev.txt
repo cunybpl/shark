@@ -2,3 +2,4 @@ jupyter
 nose
 pandas
 pytest
+pytest-cov 
