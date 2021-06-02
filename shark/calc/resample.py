@@ -28,8 +28,27 @@ class TSResample(object):
             df[k] = v
         return df
 
-    def resample(self, df, **kwargs):
+    def resample(self, df, irregular: bool = False, num_limit_points: int = 0, **kwargs):
+        """resample method
+
+        Args:
+            df ([type]): dataframe
+            irregular (bool, optional): a flag to indicate whether incoming timeseries data is irregular;
+                                        i.e timescales are not in consistent interval by any means.
+                                        If it is set to True, as long as  numbers of points in an interval is greater than
+                                        or equal to num_limit_points,points in that interval will be resampled and included in the final result.
+                                        Defaults to False.
+            num_limit_points (int, optional): If irregular is set to true, num_limit_points should be provided and set to at least 1.
+                                            This is to ensure that incomplete interval(for example hours) aren't included.
+                                            Defaults to 0.
+
+        Returns:
+            [type]: [description]
+        """        
         df = df.copy()
+        
+        if irregular:
+            assert num_limit_points, "irregular is set to True. Hence, num_limit_points must be provided."
 
         timescale_resample, freq_check_val = self._prep_args_timescale(self.timescale)
         freq = abs(int(td_to_minutes(likely_freq_array(df[self.time_column]))))
@@ -47,6 +66,10 @@ class TSResample(object):
             freq_check_val = 60*24*df[self.time_column].dt.daysinmonth
             df[self.time_column] = df[self.time_column].apply(lambda x: x.replace(day=1))
 
-        complete_hour = freq_check_val / freq # how many points is a complete hour?
-        df = df[df['count'] == complete_hour].drop(['count'], axis = 1) # drop incomplete hours
+        if irregular:
+             df = df[df['count'] >= num_limit_points].drop(['count'], axis = 1) # pick hours with at least num_limit_points observation
+        else:
+            complete_chunk = freq_check_val / freq # how many points is a complete hour?
+            df = df[df['count'] == complete_chunk].drop(['count'], axis = 1) # drop incomplete hours/intervals
+
         return self._add_metadata_to_resampled_df(df, metadata_dict)

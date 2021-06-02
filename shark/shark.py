@@ -67,13 +67,22 @@ class SharkDataFrame(object):
         interpolation = TSInterpolate(time_column, **kwargs)
         return interpolation.interpolate(self._df, add_flag)
 
-    def resample(self, time_column: str, timescale: str, metadata_cols: List=[], **kwargs) -> pd.DataFrame:
+    def resample(self, time_column: str, timescale: str, metadata_cols: List=[], 
+                    irregular: bool = False, num_limit_points: int = 0, **kwargs) -> pd.DataFrame:
         """resample time seires to a timescale.
 
         Args:
             time_column (str): name of time column.
             timescale (str): timescale such as hourly, daily, weekly, and monthly.
             metadata_cols (List): a list of metadata columns that will be included in output. 
+            irregular (bool, optional): a flag to indicate whether incoming timeseries data is irregular;
+                                        i.e timescales are not in consistent interval by any means.
+                                        If it is set to True, as long as  numbers of points in an interval is greater than
+                                        or equal to num_limit_points,points in that interval will be resampled and included in the final result.
+                                        Defaults to False.
+            num_limit_points (int, optional): If irregular is set to true, num_limit_points should be provided and set to at least 1.
+                                            This is to ensure that incomplete interval(for example hours) aren't included.
+                                            Defaults to 0.
             kwargs: col_to_be_resampled=aggregate function. kwargs is kwargs passed to pd.DataFrame.agg
                     Only columns provided in kwargs will be resampled. 
                     Other columns (excluding metadata columns and datetime cols) will not be in output.
@@ -83,4 +92,4 @@ class SharkDataFrame(object):
             pd.DataFrame: a resampled dataframe.
         """        
         resampling = TSResample(time_column, timescale, metadata_cols)
-        return resampling.resample(self._df, **kwargs)
+        return resampling.resample(self._df, irregular=irregular, num_limit_points=num_limit_points, **kwargs)
