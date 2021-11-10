@@ -31,25 +31,59 @@ class Shark(object):
         self.current_stage = 'init'
         self._current_data = None
         self.data = SharkObject(data=data)
-        self._set_current_data(data, key = 'data')
+        self._set_current_data(data)
 
-    def _set_current_data(self, data, key: str):
-        self._current_data = self.data.__getattribute__(key)
+    def _set_current_data(self, data: GenericRecords):
+        """set current data in the pipeline.
+
+        Args:
+            data (GenericRecords): a list of records
+        """        
+        self._current_data = data
 
     def _add_result_to_data(self, data: GenericRecords, key: str):
+        """add result from action (i.e fill, interpolate, resample) to data, which is shark object.
+
+        Args:
+            data (GenericRecords): [description]
+            key (str): key of shark object. Must be one of ['data', 'data_filled', data_interpolated', 'data_resampled']
+        """        
         data_to_add = {**self.data.dict(), key: data}
         self.data = SharkObject(**data_to_add)
 
-    def get_current_data(self):
+    def get_current_data(self) -> GenericRecords:
+        """get current data in shark pipeline
+
+        Returns:
+            GenericRecords: a list of records. current data
+        """        
         return self._current_data
     
-    def get_current_stage(self):
+    def get_current_stage(self) -> str:
+        """get current state in shark pipeline
+
+        Returns:
+            str: [description]
+        """        
         return self.current_stage
     
     def _set_current_stage(self, stage: str):
+        """set current stage in shark pipeline after action (i.e fill, resample, interpolate) has been taken 
+
+        Args:
+            stage (str): stage str: 'data', 'data_filled', 'data_interpolated', 'data_resampled'.
+        """        
         self.current_stage = stage
 
     def fill(self, config: FillGapsConfig):
+        """fill method on the current data
+
+        Args:
+            config (FillGapsConfig): config for filling gaps.
+
+        Returns:
+            Shark: return self
+        """        
         data = self.get_current_data()
         if self.get_current_stage() == 'init':
             data = _convert_str_to_datetime(data, key=config.time_column, format=config.format)
@@ -59,11 +93,19 @@ class Shark(object):
         df_filled = df.shark.fill(time_column=config.time_column, variable_columns=config.variable_columns, gaps_list=gaps_list)
         data_filled = df_filled.to_dict(orient="records")
         self._add_result_to_data(data_filled, key = 'data_filled')
-        self._set_current_data(data_filled, key = 'data_filled')
+        self._set_current_data(data_filled)
         self._set_current_stage('data_filled')
         return self
 
     def interpolate(self, config: InterpolationConfig):
+        """interpolate method on the current data
+
+        Args:
+            config (InterpolationConfig): config for interpolation
+
+        Returns:
+            Shark: return self
+        """        
         data = self.get_current_data()
         if self.get_current_stage() == 'init':
             data = _convert_str_to_datetime(data, key=config.time_column, format=config.format)
@@ -73,11 +115,19 @@ class Shark(object):
                                             **_unpack_interpolation_funcs(config.interpolation_funcs))
         interpolated_data = interpolate_df.to_dict(orient="records")
         self._add_result_to_data(interpolated_data, key = 'data_interpolated')
-        self._set_current_data(interpolated_data, key = 'data_interpolated')
+        self._set_current_data(interpolated_data)
         self._set_current_stage('data_interpolated')
         return self
 
     def resample(self, config: ResampleConfig):
+        """resample method on the current data
+
+        Args:
+            config (ResampleConfig): config for resampling
+
+        Returns:
+            Shark: return self
+        """        
         data = self.get_current_data()
         if self.get_current_stage() == 'init':
             data = _convert_str_to_datetime(data, key=config.time_column, format=config.format)
@@ -89,7 +139,7 @@ class Shark(object):
                                                 **_unpack_resample_funcs(config.resample_funcs))
         resampled_data = resample_df.to_dict(orient="records")
         self._add_result_to_data(resampled_data, key = 'data_resampled')
-        self._set_current_data(resampled_data, key = 'data_resampled')
+        self._set_current_data(resampled_data)
         self._set_current_stage('data_resampled')
         return self
     
