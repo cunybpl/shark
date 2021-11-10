@@ -1,64 +1,49 @@
-from shark.shark import SharkDataFrame
-import pandas as pd
+from shark import schemas
+from shark.shark import Shark, _unpack_interpolation_funcs, _unpack_resample_funcs
 import numpy as np
-from .fixtures import rtm_df, irregular_data
-import unittest
 
-tc = unittest.TestCase()
+def test_unpack_interpolation_funcs():
+    func_a = schemas.InterpolationFunc(variable_name='a', func=schemas.PandasInterpolationFunc())
+    func_b = schemas.InterpolationFunc(variable_name='b', func=schemas.PandasInterpolationFunc())
+    func_c = schemas.InterpolationFunc(variable_name='c', func=schemas.PandasInterpolationFunc())
+    unpacked = _unpack_interpolation_funcs([func_a, func_b, func_c])
 
-def test_init_and_validate_raise_error(rtm_df):
-    rtm_df['datetime'] = rtm_df['datetime'].dt.strftime(date_format = '%B %d, %Y, %r')
+    for key in ['a', 'b', 'c']:
+        assert key in unpacked.keys() 
 
-    with tc.assertRaises(ValueError):
-        rtm_df.shark.find_gaps('a', 'd')
 
-def test_shark_hourly(rtm_df):
+def test_unpack_resample_funcs():
+    func_a = schemas.ResampleFunc(variable_name='a', func=lambda x: x)
+    func_b = schemas.ResampleFunc(variable_name='b', func=lambda x: x)
+    func_c = schemas.ResampleFunc(variable_name='c', func=lambda x: x)
+    unpacked = _unpack_resample_funcs([func_a, func_b, func_c])
 
-    gap_ls = rtm_df.shark.find_gaps('datetime', '15T')
-    df_filled = rtm_df.shark.fill('datetime', variable_columns=['energy'], gaps_list=gap_ls)
-    interpolate_df = df_filled.shark.interpolate('datetime', energy={})
-    resample_df = interpolate_df.shark.resample('datetime', 'hourly', energy=np.mean)
-    assert len(resample_df) == (8497 - 1)/4
+    for key in ['a', 'b', 'c']:
+        assert key in unpacked.keys() 
+    
+def test_shark_pipeline(datetime_vec):
+    data =[{'datetime': t.strftime('%Y-%m-%d %H:%M:%S'), 'a': 2, 'b':3, 'c': 'id'} for t in datetime_vec]
+    gap_ls = [data.pop(i) for i in [10]*4]
+    gap_ls = [rec['datetime'] for rec in gap_ls]
 
-def test_shark_daily(rtm_df):
+    #fill config
+    fill_config = schemas.FillGapsConfig(time_column="datetime", freq='15T', variable_columns=['a','b'])
 
-    gap_ls = rtm_df.shark.find_gaps('datetime', '15T')
-    df_filled = rtm_df.shark.fill('datetime', variable_columns=['energy'], gaps_list=gap_ls)
-    interpolate_df = df_filled.shark.interpolate('datetime', energy={})
-    resample_df = interpolate_df.shark.resample('datetime', 'daily', energy=np.mean)
+    #interpolation config
+    func_args = schemas.PandasInterpolationFunc()
+    interpolation_func = schemas.InterpolationFunc(variable_name='a', func=func_args)
+    interpolate_config = schemas.InterpolationConfig(time_column="datetime",
+                                    interpolation_funcs=[interpolation_func])
 
-    assert len(resample_df) == 30+31+27
+    #resample config 
+    resample_sum = schemas.ResampleFunc(variable_name='a', func=np.nansum)
+    resample_mean = schemas.ResampleFunc(variable_name='b', func=np.nanmean)
+    resample_funcs = [resample_sum, resample_mean]
+    resample_config = schemas.ResampleConfig(time_column="datetime", metadata_cols=['c'], timescale="hourly", resample_funcs=resample_funcs)
 
-def test_shark_weekly(rtm_df):
-
-    gap_ls = rtm_df.shark.find_gaps('datetime', '15T')
-    df_filled = rtm_df.shark.fill('datetime', variable_columns=['energy'], gaps_list=gap_ls)
-    interpolate_df = df_filled.shark.interpolate('datetime', energy={})
-    resample_df = interpolate_df.shark.resample('datetime', 'weekly', energy=np.mean)
-
-    assert len(resample_df) == int(88/7)
-
-def test_shark_monthly(rtm_df):
-
-    gap_ls = rtm_df.shark.find_gaps('datetime', '15T')
-    df_filled = rtm_df.shark.fill('datetime', variable_columns=['energy'], gaps_list=gap_ls)
-    interpolate_df = df_filled.shark.interpolate('datetime', energy={})
-    resample_df = interpolate_df.shark.resample('datetime', 'monthly', energy=np.mean)
-
-    assert len(resample_df) == 2
-
-def test_shark_with_irregular_data(irregular_data):
-
-    resample_df = irregular_data.shark.resample('datetime', 'hourly', irregular=True, num_limit_points= 1,
-                                                a=np.sum)
-
-    assert len(resample_df) == 4
-
-    resample_df = irregular_data.shark.resample('datetime', 'hourly', irregular=True, num_limit_points= 2,
-                                                a=np.sum)
-
-    assert len(resample_df) == 3
-
-    with tc.assertRaises(AssertionError):
-        resample_df = irregular_data.shark.resample('datetime', 'hourly', irregular=True,
-                                                a=np.sum)
+    s = Shark(data).fill(fill_config).interpolate(interpolate_config).resample(resample_config)
+    
+    assert s.data.data_filled != None
+    assert s.data.data_interpolated != None
+    assert s.data.data_resampled != None
+    assert s._current_stage == 'data_resampled'

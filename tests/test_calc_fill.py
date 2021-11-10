@@ -1,6 +1,5 @@
 import pandas as pd
 from shark.calc import TSFill
-from .fixtures import datetime_vec
 
 def test_fill(datetime_vec):
     data =[{'datetime': t, 'a': 2, 'b':3, 'c': 'id'} for t in datetime_vec]
@@ -16,7 +15,7 @@ def test_fill(datetime_vec):
     records = [rec for rec in records if rec['datetime'] in gap_ls]
     assert len(records) == 3
     for rec in records:
-        assert rec['a'] == None
-        assert rec['b'] == None
+        assert rec['a'] == None or pd.isna(rec['a'])
+        assert rec['b'] == None or pd.isna(rec['a'])
         assert rec['c'] == 'id'
 

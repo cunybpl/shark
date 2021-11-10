@@ -1,6 +1,5 @@
 from shark.calc import TSFindGaps
 import pandas as pd 
-from .fixtures import datetime_vec
 
 def test_detect_freq(datetime_vec):
     data = [{'datetime': t, 'a': 2, 'b':3} for t in datetime_vec]

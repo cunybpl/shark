@@ -20,7 +20,7 @@ clean-test:
 
 
 test: clean-test
-	pytest --cov=shark/calc --cov-report=term-missing tests/ -v -s
+	pytest --cov=shark/ --cov-report=term-missing tests/ -v -s
 
 test-single-module: clean-test
 	pytest $(module) -v -s
