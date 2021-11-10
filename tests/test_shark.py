@@ -1,6 +1,7 @@
 from shark import schemas
-from shark.shark import Shark, _unpack_interpolation_funcs, _unpack_resample_funcs
+from shark.shark import Shark, _unpack_interpolation_funcs, _unpack_resample_funcs, _convert_str_to_datetime
 import numpy as np
+import datetime
 
 def test_unpack_interpolation_funcs():
     func_a = schemas.InterpolationFunc(variable_name='a', func=schemas.PandasInterpolationFunc())
@@ -20,6 +21,20 @@ def test_unpack_resample_funcs():
 
     for key in ['a', 'b', 'c']:
         assert key in unpacked.keys() 
+
+def test_convert_str_to_datetime():
+    data = [{'a': '2017-07-01', 'b': 1},{'a': '2017-07-02', 'b': 2}]
+
+    data_converted = _convert_str_to_datetime(data, key='a', format="%Y-%m-%d")
+    assert data_converted[0]['a'] == datetime.datetime.strptime('2017-07-01', "%Y-%m-%d")
+    assert data_converted[0]['b'] == 1
+    assert data[0]['a'] == '2017-07-01'
+    assert data[0]['b'] == 1
+
+    assert data_converted[1]['a'] == datetime.datetime.strptime('2017-07-02', "%Y-%m-%d")
+    assert data_converted[1]['b'] == 2
+    assert data[1]['a'] == '2017-07-02'
+    assert data[1]['b'] == 2 
     
 def test_shark_pipeline(datetime_vec):
     data =[{'datetime': t.strftime('%Y-%m-%d %H:%M:%S'), 'a': 2, 'b':3, 'c': 'id'} for t in datetime_vec]
@@ -46,4 +61,16 @@ def test_shark_pipeline(datetime_vec):
     assert s.data.data_filled != None
     assert s.data.data_interpolated != None
     assert s.data.data_resampled != None
-    assert s._current_stage == 'data_resampled'
+    assert s.current_stage == 'data_resampled'
+
+    s = Shark(data)
+    assert s.current_stage == 'init'
+
+    s.fill(fill_config)
+    assert s.current_stage == "data_filled"
+
+    s.resample(resample_config)
+    assert s.current_stage == "data_resampled"
+    assert s.data.data_interpolated == None
+    assert s.data.data_resampled != None
+

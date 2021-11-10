@@ -11,10 +11,24 @@ def _unpack_resample_funcs(funcs: List[ResampleFunc]) -> Dict[str, callable]:
 def _unpack_interpolation_funcs(funcs: List[InterpolationFunc]) -> Dict[str, Dict]:
     return {func.variable_name: func.dict() for func in funcs}
 
+def _convert_str_to_datetime(records: GenericRecords, key: str, format: str) -> GenericRecords:
+    """convert value corresponds to key for a list of records from datetime to string
+
+    Args:
+        records (GenericRecords): List of records
+        key (str): the name of the key of the value that is to be converted to datetime.
+        format (str): the format of the input datetime str.
+
+    Returns:
+        GenericRecords: converted GenericRecords
+    """        
+    map_ = map(lambda x: {**x, key: datetime.datetime.strptime(x[key], format)}, records)
+    return list(map_)
+
 class Shark(object):
 
     def __init__(self, data: GenericRecords):
-        self._current_stage = 'init'
+        self.current_stage = 'init'
         self._current_data = None
         self.data = SharkObject(data=data)
         self._set_current_data(data, key = 'data')
@@ -33,10 +47,13 @@ class Shark(object):
         return self.current_stage
     
     def _set_current_stage(self, stage: str):
-        self._current_stage = stage
+        self.current_stage = stage
 
     def fill(self, config: FillGapsConfig):
-        data = self._convert_str_to_datetime(self._current_data, key=config.time_column, format=config.format)
+        data = self.get_current_data()
+        if self.get_current_stage() == 'init':
+            data = _convert_str_to_datetime(data, key=config.time_column, format=config.format)
+
         df = pd.DataFrame(data)
         gaps_list = df.shark.find_gaps(time_column=config.time_column, freq=config.freq)
         df_filled = df.shark.fill(time_column=config.time_column, variable_columns=config.variable_columns, gaps_list=gaps_list)
@@ -47,10 +64,10 @@ class Shark(object):
         return self
 
     def interpolate(self, config: InterpolationConfig):
-        if not self.data.data_filled:
-            data = self._convert_str_to_datetime(self._current_data,  key=config.time_column, format=config.format)
-        else:
-            data = self.get_current_data()
+        data = self.get_current_data()
+        if self.get_current_stage() == 'init':
+            data = _convert_str_to_datetime(data, key=config.time_column, format=config.format)
+
         df_filled = pd.DataFrame(data)
         interpolate_df = df_filled.shark.interpolate(config.time_column, add_flag=config.interpolation_flag, 
                                             **_unpack_interpolation_funcs(config.interpolation_funcs))
@@ -61,10 +78,10 @@ class Shark(object):
         return self
 
     def resample(self, config: ResampleConfig):
-        if not self.data.data_interpolated:
-            data = self._convert_str_to_datetime(self._current_data,  key=config.time_column, format=config.format)
-        else:
-            data = self.get_current_data()
+        data = self.get_current_data()
+        if self.get_current_stage() == 'init':
+            data = _convert_str_to_datetime(data, key=config.time_column, format=config.format)
+
         interpolated_df = pd.DataFrame(data)
         resample_df = interpolated_df.shark.resample(time_column=config.time_column, timescale=config.timescale, 
                                                 irregular=config.irregular, num_limit_points=config.num_limit_points,
@@ -76,17 +93,3 @@ class Shark(object):
         self._set_current_stage('data_resampled')
         return self
     
-
-    def _convert_str_to_datetime(self, records: GenericRecords, key: str, format: str) -> GenericRecords:
-        """convert value corresponds to key for a list of records from datetime to string
-
-        Args:
-            records (GenericRecords): List of records
-            key (str): the name of the key of the value that is to be converted to datetime.
-            format (str): the format of the input datetime str.
-
-        Returns:
-            GenericRecords: converted GenericRecords
-        """        
-        map_ = map(lambda x: {key: datetime.datetime.strptime(x.pop(key), format), **x}, records)
-        return list(map_)
