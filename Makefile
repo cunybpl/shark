@@ -24,17 +24,3 @@ test: clean-test
 
 test-single-module: clean-test
 	pytest $(module) -v -s
-
-
-install-dev: clean
-	pip install -r requirements_dev.txt
-	pip install -e . 
-
-
-install-dev-force-reinstall: clean 
-	pip install -r requirements_dev.txt
-	pip install -e . --force-reinstall
-
-
-install: clean 
-	pip install . 
