@@ -1,4 +1,3 @@
-from .fixtures import datetime_vec
 from shark.calc import TSResample 
 import pandas as pd 
 import numpy as np

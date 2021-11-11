@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "shark"
+version = "v1.1.0"
+description = "dataframe extension package for cleaning and resampling time series data"
+authors = ["tinnaing347 <tinnaing347@gmail.com>"]
+license = "Apache"
+
+[tool.poetry.dependencies]
+python = ">=3.8"
+pandas = ">=1.1"
+pydantic = "^1.8.2"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.5"
+pytest-cov = "^3.0.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

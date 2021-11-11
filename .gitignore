@@ -8,3 +8,6 @@ __pycache__/
 .coverage
 *.csv
 *.json
+
+.pytest_cache/
+.ipynb_checkpoints/

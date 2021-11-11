@@ -1,95 +1,145 @@
-import numpy as np 
+from .extension import SharkDataFrame
+from .schemas import FillGapsConfig, GenericRecords, ResampleFunc, SharkObject, InterpolationFunc, \
+                                InterpolationConfig, ResampleConfig
+import datetime
 import pandas as pd
-from pandas.api.extensions import register_dataframe_accessor
-from .calc import TSFill, TSFindGaps, TSInterpolate, TSResample
-from typing import List
+from typing import List, Dict, Union
 
-@register_dataframe_accessor('shark')
-class SharkDataFrame(object):
-    """ different combinations of things. 
-    """
+def _unpack_resample_funcs(funcs: List[ResampleFunc]) -> Dict[str, callable]:
+    return {func.variable_name: func.func for func in funcs}
 
-    def __init__(self, df):
-        self._df = self._validate(df)
+def _unpack_interpolation_funcs(funcs: List[InterpolationFunc]) -> Dict[str, Dict]:
+    return {func.variable_name: func.dict() for func in funcs}
 
+def _convert_str_to_datetime(records: GenericRecords, key: str, format: str) -> GenericRecords:
+    """convert value corresponds to key for a list of records from datetime to string
 
-    def _validate(self, df):
-        '''
-        Ensures the DF has a time column.
-        '''
-        
-        if len(df.select_dtypes(include = ['datetime64']).columns) == 1:
-            return df.copy(deep = True)
-        else:
-            raise ValueError("No datetime column in df")
+    Args:
+        records (GenericRecords): List of records
+        key (str): the name of the key of the value that is to be converted to datetime.
+        format (str): the format of the input datetime str.
+
+    Returns:
+        GenericRecords: converted GenericRecords
+    """        
+    map_ = map(lambda x: {**x, key: datetime.datetime.strptime(x[key], format)}, records)
+    return list(map_)
+
+class Shark(object):
+
+    def __init__(self, data: GenericRecords):
+        self.current_stage = 'init'
+        self._current_data = None
+        self.data = SharkObject(data=data)
+        self._set_current_data(data)
+
+    def _set_current_data(self, data: GenericRecords):
+        """set current data in the pipeline.
+
+        Args:
+            data (GenericRecords): a list of records
+        """        
+        self._current_data = data
+
+    def _add_result_to_data(self, data: GenericRecords, key: str):
+        """add result from action (i.e fill, interpolate, resample) to data, which is shark object.
+
+        Args:
+            data (GenericRecords): [description]
+            key (str): key of shark object. Must be one of ['data', 'data_filled', data_interpolated', 'data_resampled']
+        """        
+        data_to_add = {**self.data.dict(), key: data}
+        self.data = SharkObject(**data_to_add)
+
+    def get_current_data(self) -> GenericRecords:
+        """get current data in shark pipeline
+
+        Returns:
+            GenericRecords: a list of records. current data
+        """        
+        return self._current_data
     
-    def find_gaps(self, time_column: str, freq: str) -> List:
-        """find gaps given a dataframe with time_column
-
-        Args:
-            time_column (str): name of time column.
-            freq (str): freq str
+    def get_current_stage(self) -> str:
+        """get current state in shark pipeline
 
         Returns:
-            [type]: [description]
+            str: [description]
         """        
-        gaps = TSFindGaps(time_column)
-        return gaps.find_gaps(self._df, freq)
+        return self.current_stage
     
-    def fill(self, time_column: str, variable_columns: List, gaps_list: List) -> pd.DataFrame:
-        """fill the gaps in time series given positions/datetime index where the gaps are occuring or the data are missing.
-            The rest of the columns (excluding variable columns and time column) will be considered as metadata columns and
-            they will be filled with metadata extracted from dataframe.
+    def _set_current_stage(self, stage: str):
+        """set current stage in shark pipeline after action (i.e fill, resample, interpolate) has been taken 
 
         Args:
-            time_column (str): name of time column
-            variable_columns (List): a list of variable columns. These are the columns that are filled with nan.
-            gaps_list (List): a list of datetime index where data is missing
-
-        Returns:
-            pd.DataFrame: a dataframe with fillings.
+            stage (str): stage str: 'data', 'data_filled', 'data_interpolated', 'data_resampled'.
         """        
-        filling = TSFill(time_column, variable_columns)
-        return filling.fill(self._df, gaps_list)
+        self.current_stage = stage
 
-    def interpolate(self, time_column: str, add_flag: bool=True, **kwargs) -> pd.DataFrame:
-        """interpolate the gaps in time series. Add flag to interpolated columns
+    def fill(self, config: FillGapsConfig):
+        """fill method on the current data
 
         Args:
-            time_column (str): the name of time column
-            add_flag (bool): Defaults to True. If set to True, add a flag column that indicates if a point has been interpolated or not.
-            kwargs: col_to_be_interpolated = dict of kwargs of pd.DataFrame.interpolate
-                    example: kwargs = dict(var_x={'limit': 4, method: 'linear'}, var_y = {'limit': 5, method: 'polynomial'})
-                    
-        Returns:
-            pd.DataFrame: an interpolated dataframe
-        """        
-        interpolation = TSInterpolate(time_column, **kwargs)
-        return interpolation.interpolate(self._df, add_flag)
+            config (FillGapsConfig): config for filling gaps.
 
-    def resample(self, time_column: str, timescale: str, metadata_cols: List=[], 
-                    irregular: bool = False, num_limit_points: int = 0, **kwargs) -> pd.DataFrame:
-        """resample time seires to a timescale.
+        Returns:
+            Shark: return self
+        """        
+        data = self.get_current_data()
+        if self.get_current_stage() == 'init':
+            data = _convert_str_to_datetime(data, key=config.time_column, format=config.format)
+
+        df = pd.DataFrame(data)
+        gaps_list = df.shark.find_gaps(time_column=config.time_column, freq=config.freq)
+        df_filled = df.shark.fill(time_column=config.time_column, variable_columns=config.variable_columns, gaps_list=gaps_list)
+        data_filled = df_filled.to_dict(orient="records")
+        self._add_result_to_data(data_filled, key = 'data_filled')
+        self._set_current_data(data_filled)
+        self._set_current_stage('data_filled')
+        return self
+
+    def interpolate(self, config: InterpolationConfig):
+        """interpolate method on the current data
 
         Args:
-            time_column (str): name of time column.
-            timescale (str): timescale such as hourly, daily, weekly, and monthly.
-            metadata_cols (List): a list of metadata columns that will be included in output. 
-            irregular (bool, optional): a flag to indicate whether incoming timeseries data is irregular;
-                                        i.e timescales are not in consistent interval by any means.
-                                        If it is set to True, as long as  numbers of points in an interval is greater than
-                                        or equal to num_limit_points,points in that interval will be resampled and included in the final result.
-                                        Defaults to False.
-            num_limit_points (int, optional): If irregular is set to true, num_limit_points should be provided and set to at least 1.
-                                            This is to ensure that incomplete interval(for example hours) aren't included.
-                                            Defaults to 0.
-            kwargs: col_to_be_resampled=aggregate function. kwargs is kwargs passed to pd.DataFrame.agg
-                    Only columns provided in kwargs will be resampled. 
-                    Other columns (excluding metadata columns and datetime cols) will not be in output.
-                    example: kwargs = dict(var_x=np.sum, var_y=np.mean)
+            config (InterpolationConfig): config for interpolation
 
         Returns:
-            pd.DataFrame: a resampled dataframe.
+            Shark: return self
         """        
-        resampling = TSResample(time_column, timescale, metadata_cols)
-        return resampling.resample(self._df, irregular=irregular, num_limit_points=num_limit_points, **kwargs)
+        data = self.get_current_data()
+        if self.get_current_stage() == 'init':
+            data = _convert_str_to_datetime(data, key=config.time_column, format=config.format)
+
+        df_filled = pd.DataFrame(data)
+        interpolate_df = df_filled.shark.interpolate(config.time_column, add_flag=config.interpolation_flag, 
+                                            **_unpack_interpolation_funcs(config.interpolation_funcs))
+        interpolated_data = interpolate_df.to_dict(orient="records")
+        self._add_result_to_data(interpolated_data, key = 'data_interpolated')
+        self._set_current_data(interpolated_data)
+        self._set_current_stage('data_interpolated')
+        return self
+
+    def resample(self, config: ResampleConfig):
+        """resample method on the current data
+
+        Args:
+            config (ResampleConfig): config for resampling
+
+        Returns:
+            Shark: return self
+        """        
+        data = self.get_current_data()
+        if self.get_current_stage() == 'init':
+            data = _convert_str_to_datetime(data, key=config.time_column, format=config.format)
+
+        interpolated_df = pd.DataFrame(data)
+        resample_df = interpolated_df.shark.resample(time_column=config.time_column, timescale=config.timescale, 
+                                                irregular=config.irregular, num_limit_points=config.num_limit_points,
+                                                metadata_cols=config.metadata_cols,
+                                                **_unpack_resample_funcs(config.resample_funcs))
+        resampled_data = resample_df.to_dict(orient="records")
+        self._add_result_to_data(resampled_data, key = 'data_resampled')
+        self._set_current_data(resampled_data)
+        self._set_current_stage('data_resampled')
+        return self
+    

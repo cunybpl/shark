@@ -4,6 +4,32 @@ A dataframe extension for cleaning and resampling time series data
 
 #### Usage
 
+#### Shark pipeline
+```python
+from shark import schemas, shark
+from numpy as np
+data =[{'datetime': t.strftime('%Y-%m-%d %H:%M:%S'), 'a': 2, 'b':3, 'c': 'id'} for t in datetime_vec]
+gap_ls = [data.pop(i) for i in [10]*4]#keeping record of gaps
+gap_ls = [rec['datetime'] for rec in gap_ls] #keeping record of gaps
+
+#fill config
+fill_config = schemas.FillGapsConfig(time_column="datetime", freq='15T', variable_columns=['a','b'])
+
+#interpolation config
+func_args = schemas.PandasInterpolationFunc()
+interpolation_func = schemas.InterpolationFunc(variable_name='a', func=func_args)
+interpolate_config = schemas.InterpolationConfig(time_column="datetime",
+                                interpolation_funcs=[interpolation_func])
+
+#resample config 
+resample_sum = schemas.ResampleFunc(variable_name='a', func=np.nansum)
+resample_mean = schemas.ResampleFunc(variable_name='b', func=np.nanmean)
+resample_funcs = [resample_sum, resample_mean]
+resample_config = schemas.ResampleConfig(time_column="datetime", metadata_cols=['c'], timescale="hourly", resample_funcs=resample_funcs)
+
+s = shark.Shark(data).fill(fill_config).interpolate(interpolate_config).resample(resample_config)
+```
+
 ##### Finding gaps in time series
 ```python
 import pandas as pd

@@ -1,4 +1,3 @@
-from .fixtures import datetime_vec
 import pandas as pd
 from shark.calc import TSInterpolate, TSFill
 
@@ -18,4 +17,4 @@ def test_interpolate(datetime_vec):
 
     for i in [10,11,12,13]:
         assert rec_inter[i]['a'] == 2
-        assert rec_inter[i]['b'] == None
+        assert rec_inter[i]['b'] == None or pd.isna(rec_inter[i]['b'])
