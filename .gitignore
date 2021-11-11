@@ -10,6 +10,8 @@ __pycache__/
 .coverage
 *.csv
 *.json
+!tests/fixtures/*.json
 
 .pytest_cache/
 .ipynb_checkpoints/
+
