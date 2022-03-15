@@ -21,7 +21,6 @@ class TSInterpolate(object):
     def interpolate(self, df, add_flag: bool=True):
         df = df.copy()
         df.sort_values(by=[self.time_column], inplace=True)
-
         for k, v in self.config.items():
             df = self._add_interpolated_flag_cols(df, k) if add_flag else df
             df[k] = df[k].interpolate(**v)

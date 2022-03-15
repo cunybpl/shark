@@ -9,7 +9,7 @@ def _unpack_resample_funcs(funcs: List[ResampleFunc]) -> Dict[str, callable]:
     return {func.variable_name: func.func for func in funcs}
 
 def _unpack_interpolation_funcs(funcs: List[InterpolationFunc]) -> Dict[str, Dict]:
-    return {func.variable_name: func.dict() for func in funcs}
+    return {func.variable_name: func.func.dict() for func in funcs}
 
 def _convert_str_to_datetime(records: GenericRecords, key: str, format: str) -> GenericRecords:
     """convert value corresponds to key for a list of records from datetime to string
