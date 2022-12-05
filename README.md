@@ -4,6 +4,9 @@ A dataframe extension for cleaning and resampling time series data
 
 #### Usage
 
+Shark library can be used in two different ways:
+* via public `shark.shark.Shark` api along with schemas for configuration; see [here for example](#shark-pipeline).
+* directly on a dataframe object with a datetime column as a dataframe extension; see [here for example](#shark-as-dataframe-extension).
 #### Shark pipeline
 ```python
 from shark import schemas, shark
@@ -30,6 +33,32 @@ resample_config = schemas.ResampleConfig(time_column="datetime", metadata_cols=[
 s = shark.Shark(data).fill(fill_config).interpolate(interpolate_config).resample(resample_config)
 ```
 
+#### Shark as dataframe extension
+
+```python
+import shark #import to  shark dataframe extension
+import datetime
+import pandas as pd
+
+df = pd.DataFrame({"time": [datetime.datetime(2010,1,1)], "val": [1]})
+
+df.shark
+<shark.extension.SharkDataFrame object at 0x7f07b0e5bf70>
+
+df = pd.DataFrame({'a': [1]}) #no time column
+df.shark #this will raise error
+
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "/home/tin/.pyenv/versions/shark/lib/python3.9/site-packages/pandas/core/accessor.py", line 181, in __get__
+    accessor_obj = self._accessor(obj)
+  File "/home/tin/projects/shark/shark/extension.py", line 13, in __init__
+    self._df = self._validate(df)
+  File "/home/tin/projects/shark/shark/extension.py", line 24, in _validate
+    raise ValueError("No datetime column in df")
+ValueError: No datetime column in df
+```
+In the following examples, shark is accessed and used directly as a dataframe extension via dataframe; example: `df.shark.find_gaps(...)`
 ##### Finding gaps in time series
 ```python
 import pandas as pd
